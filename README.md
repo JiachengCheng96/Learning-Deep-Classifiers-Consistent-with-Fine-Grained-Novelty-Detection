@@ -25,4 +25,19 @@ We implement our methods in PyTorch on NVIDIA GPUs. The environment requirements
 
 
 ## Datasets
-We evaluated NDCC on multiple fine-grained visual categorization datasets ([CUB-200-2010](http://www.vision.caltech.edu/visipedia/CUB-200.html), [StanfordDogs](http://vision.stanford.edu/aditya86/ImageNetDogs/), and [FounderType200](https://www.icst.pku.edu.cn/zlian/representa/cv017/index.htm)). If you use these datasets, please cite the corresponding papers.
+We evaluated NDCC on multiple fine-grained visual categorization datasets: [CUB-200-2010](http://www.vision.caltech.edu/visipedia/CUB-200.html), [StanfordDogs](http://vision.stanford.edu/aditya86/ImageNetDogs/), and [FounderType200](https://www.icst.pku.edu.cn/zlian/representa/cv017/index.htm). Please download and organize them as follows.
+```
+datasets/
+├── StandfordDogs/
+│   └── Images/
+│       ├── n02085620-Chihuahua/
+│       └── ...
+├── CUB_200_2010/
+│   └── Images/
+│       ├── 001.Black_footed_Albatross/
+│       └── ...
+└── FounderType200/
+    ├── 1/
+    └── ...
+```
+If you use these datasets, please cite the corresponding papers.
