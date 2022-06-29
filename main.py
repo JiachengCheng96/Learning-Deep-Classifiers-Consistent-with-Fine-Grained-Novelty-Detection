@@ -20,82 +20,6 @@ from NDCC import NDCC
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
 
-
-def train_NDCC(model, optimizer, scheduler, num_epochs=20):
-    for epoch in range(num_epochs):
-        since2 = time.time()
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
-
-        # Each epoch has a training and validation phase
-        for phase in ['train', 'val']:
-        # for phase in ['train']:
-            
-            model.eval()  # NDCC is alwayes set to evaluate mode
-
-            cnt = 0
-
-            epoch_loss = 0.
-            epoch_acc = 0.
-
-            for step, (inputs, labels) in enumerate(dataloaders[phase]):
-
-                inputs = (inputs.cuda())
-                labels = (labels.long().cuda())
-
-                optimizer.zero_grad()
-
-                with torch.set_grad_enabled(phase == 'train'):
-                    outputs = model(inputs)
-
-                    if opt.strategy == 1:
-                        sigma2 = model.sigma ** 2
-                        means = sigma2 * model.classifier.weight
-
-                    elif opt.strategy == 2:
-                        sigma2 = (model.sigma + model.delta) ** 2
-                        means = model.classifier.weight * sigma2
-
-                    if opt.strategy == 1:
-                        loss_MD = ((((outputs - means[labels]) ** 2).sum()) / (sigma2.detach())) / (2 * outputs.shape[0])
-                        loss_NLL = (model.dim_embedding * torch.log(sigma2)) / 2 + ((((outputs.detach() - means[labels]) ** 2).sum()) / (sigma2)) / (2 * outputs.shape[0])
-
-                    elif opt.strategy == 2:
-                        loss_MD = (torch.div((outputs - means[labels]) ** 2, sigma2.detach())).sum() / (2 * outputs.shape[0])
-                        loss_NLL = (torch.log(sigma2).sum()) / 2 + (torch.div((outputs.detach() - means[labels]) ** 2, sigma2).sum() / outputs.shape[0]) / 2
-
-                    logits = nn.parallel.data_parallel(model.classifier, outputs)
-                    loss_CE = F.cross_entropy(logits, labels)
-
-                    loss = loss_CE + opt.lmd * (loss_MD + opt.gma * loss_MD)
-
-                # backward + optimize only if in training phase
-                if phase == 'train':
-                    loss.backward()
-                    optimizer.step()
-
-                if step % 100 == 0:
-                    print('{} step: {} loss: {:.4f}, loss_CE: {:.4f}, loss_MD: {:.4f}, loss_NLL: {:.4f}'.format(
-                        phase, step, loss.item(), loss_CE.item(), loss_MD.item(), loss_NLL.item()))
-
-                # statistics
-                _, preds = torch.max(logits, 1)
-
-                epoch_loss = (loss.item() * inputs.size(0) + cnt * epoch_loss) / (cnt + inputs.size(0))
-                epoch_acc = (torch.sum(preds == labels.data) + epoch_acc * cnt).double() / (cnt + inputs.size(0))
-
-                cnt += inputs.size(0)
-
-            print('{} Loss: {:.4f} Acc: {:.4f}'.format(phase, epoch_loss, epoch_acc))
-            if phase == 'train':
-                scheduler.step()
-
-        print('this epoch takes {} seconds.'.format(time.time() - since2))
-
-    saved_model_path = os.path.join(output_folder, 'NDCC_state_dict.pth')
-    torch.save(model.state_dict(), saved_model_path)
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=256)
@@ -104,7 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_folder', type=str, default='/datasets')
     parser.add_argument('--dataset', type=str, default='FounderType200', choices=['CUB200', 'StanfordDogs', 'FounderType200'])
     parser.add_argument('--network', type=str, default='alexnet', choices=['alexnet', 'vgg16'])
-    parser.add_argument('--num_workers', type=int, default=4)
+    parser.add_argument('--num_workers', type=int, default=2)
     parser.add_argument('--random_seed', type=int, default=42, help='random seed for train/test split')
     parser.add_argument('--strategy', type=int, default=1, choices=[1, 2], help='strategy for the parameterization of $\Sigma$')
 
@@ -121,6 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('--lmd', type=float, default=2e-1, help='\lambda in Eq. (23)')
     parser.add_argument('--gma', type=float, default=1/4096, help='\gamma in Eq. (22)')
     parser.add_argument('--r', type=float, default=16, help='\|v(x)\|=r')
+    parser.add_argument('--d', type=int, default=4096, help='dimentionality of v(x)')
 
     parser.add_argument('--exp_id', type=str, default='1')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints')
@@ -141,7 +66,6 @@ if __name__ == '__main__':
 
 
     
-    assert torch.cuda.is_available()
     
     # recommended choice for hyperparameters (according to Table C.1. in our Supplementary Material)
     if opt.dataset == 'StanfordDogs':
@@ -263,8 +187,8 @@ if __name__ == '__main__':
         embedding = models.alexnet(pretrained=True)
         embedding.classifier[6] = nn.Sequential()
 
-    classifier = nn.Linear(4096, opt.num_classes)
-    model = NDCC(embedding=embedding, classifier=classifier, strategy=opt.strategy, l2_normalize=True, r=opt.r)
+    classifier = nn.Linear(opt.d, opt.num_classes)
+    model = NDCC(embedding=embedding, classifier=classifier, opt=opt, l2_normalize=True)
 
     if opt.strategy == 1:
         optimizer = torch.optim.SGD([{'params': model.embedding.parameters(), 'lr': opt.lr1},
@@ -280,11 +204,15 @@ if __name__ == '__main__':
 
     scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=opt.lr_milestones, gamma=0.1)
 
+    assert torch.cuda.is_available()
     model = model.cuda()
 
     #==================== training ====================
 
-    train_NDCC(model, optimizer, scheduler, num_epochs=opt.num_epochs)
+    model.fit(optimizer=optimizer, scheduler=scheduler, dataloaders=dataloaders, num_epochs=opt.num_epochs)
+
+    saved_model_path = os.path.join(output_folder, 'NDCC_state_dict.pth')
+    torch.save(model.state_dict(), saved_model_path)
 
     #==================== evaluation ====================
 
