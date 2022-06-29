@@ -39,22 +39,6 @@ def mahalanobis_metric(X, Y, inv_Sigma):
 
     return distances
 
-def cosine_metric(X, Y, inv_Sigma):
-    # X: numpy array of shape (n_samples_X, n_features)
-    # Y: numpy array of shape (n_samples_Y, n_features)
-    # Sigma: diagonal covariance
-
-    # X_normalized = X @ (np.sqrt(inv_Sigma))
-    # Y_normalized = Y @ (np.sqrt(inv_Sigma))
-    distances = pairwise_distances(X, Y, metric='cosine', n_jobs=1)
-
-    return distances
-
-def euclidean_metric(X, Y):
-
-    distances = pairwise_distances(X, Y=Y, metric='cosine', n_jobs=1)
-
-    return distances
 
 
 class Logger(object):
