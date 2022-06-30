@@ -26,7 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_batch_size', type=int, default=256)
 
     parser.add_argument('--data_folder', type=str, default='/datasets')
-    parser.add_argument('--dataset', type=str, default='FounderType200', choices=['CUB200', 'StanfordDogs', 'FounderType200'])
+    parser.add_argument('--dataset', type=str, default='StanfordDogs', choices=['CUB200', 'StanfordDogs', 'FounderType200'])
     parser.add_argument('--network', type=str, default='alexnet', choices=['alexnet', 'vgg16'])
     parser.add_argument('--num_workers', type=int, default=2)
     parser.add_argument('--random_seed', type=int, default=42, help='random seed for train/test split')
@@ -208,8 +208,9 @@ if __name__ == '__main__':
     model = model.cuda()
 
     #==================== training ====================
-
+    print('training started!')
     model.fit(optimizer=optimizer, scheduler=scheduler, dataloaders=dataloaders, num_epochs=opt.num_epochs)
+    print('training finished!')
 
     saved_model_path = os.path.join(output_folder, 'NDCC_state_dict.pth')
     torch.save(model.state_dict(), saved_model_path)
@@ -225,5 +226,8 @@ if __name__ == '__main__':
     ND_loader = DataLoader(dataset=ND_dataset, batch_size=opt.test_batch_size, shuffle=False, num_workers=opt.num_workers,
                            pin_memory=True)
 
+    print('evaluation started!')
     ND_scores = model.get_ND_scores(ND_loader)
     print('AUC ROC: %f' % roc_auc_score(ND_labels, ND_scores))
+    print('evaluation finished!')
+
