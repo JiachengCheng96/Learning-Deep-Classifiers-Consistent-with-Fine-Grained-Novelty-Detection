@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from utils import mahalanobis_metric
+from tqdm import tqdm
 
 class NDCC(nn.Module):
     def __init__(self, embedding, classifier, opt, l2_normalize=True):
@@ -119,7 +120,7 @@ class NDCC(nn.Module):
             print('this epoch takes {} seconds.'.format(time.time() - since2))
 
 
-
+    @torch.no_grad()
     def get_ND_scores(self, loader):
         self.eval()  # Set model to evaluate mode
 
@@ -140,23 +141,24 @@ class NDCC(nn.Module):
     
         distances = np.zeros((len(loader.dataset), self.num_classes))
 
-        with torch.no_grad():
-            idx = 0
-            # Iterate over data.
-            for step, (inputs, _) in enumerate(loader):
-                if step%100 == 0:
-                    print(step)
+        idx = 0
+        # Iterate over data.
+        for step, (inputs, _) in enumerate(tqdm(loader)):
+            # if step%100 == 0:
+            #     print(step)
 
-                inputs = inputs.cuda()
+            inputs = inputs.cuda()
 
-                # outputs = self(inputs)
-                outputs = nn.parallel.data_parallel(self, inputs)
-                
-                outputs = outputs.detach().cpu().numpy().squeeze()
-                
-                distances[idx:idx+len(outputs), :] = mahalanobis_metric(outputs, means, inv_Sigma)
+            # outputs = self(inputs)
+            outputs = nn.parallel.data_parallel(self, inputs)
+            
+            outputs = outputs.detach().cpu().numpy().squeeze()
+            batch_distance = mahalanobis_metric(outputs, means, inv_Sigma)
 
-                idx += len(outputs)
+            assert batch_distance.shape == distances[idx:idx+len(outputs), :].shape
+            distances[idx:idx+len(outputs), :] = batch_distance
+
+            idx += len(outputs)
                 
 
                 
