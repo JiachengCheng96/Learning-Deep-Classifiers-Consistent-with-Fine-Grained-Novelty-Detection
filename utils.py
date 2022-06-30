@@ -9,15 +9,17 @@ from sklearn.metrics.pairwise import pairwise_distances
 class my_dataset(Dataset):
 
     def __init__(self, files_list, labels_list, transform, data_folder):
-        self.files_list = files_list
-        self.labels_list = labels_list
-        self.transform = transform
-        self.data_folder = data_folder
+        self.files_list = [file.replace('/', os.sep).replace('\\', os.sep) for file in files_list]
+        self.files_list = [os.path.join(data_folder, file) for file in self.files_list]
+        assert all([os.path.exists(file) for file in self.files_list])
 
+        self.labels_list = labels_list
         assert len(self.files_list) == len(self.labels_list)
+        
+        self.transform = transform
 
     def __getitem__(self, index):
-        img = Image.open(os.path.join(self.data_folder, self.files_list[index])).convert("RGB")
+        img = Image.open(self.files_list[index]).convert("RGB")
         img = self.transform(img)
         return img, self.labels_list[index]
 
