@@ -79,15 +79,13 @@ class NDCC(nn.Module):
                             sigma2 = self.sigma ** 2
                             means = sigma2 * self.classifier.weight
 
-                        elif self.strategy == 2:
-                            sigma2 = (self.sigma + self.delta) ** 2
-                            means = self.classifier.weight * sigma2
-
-                        if self.strategy == 1:
                             loss_MD = ((((outputs - means[labels]) ** 2).sum()) / (sigma2.detach())) / (2 * outputs.shape[0])
                             loss_NLL = (self.dim_embedding * torch.log(sigma2)) / 2 + ((((outputs.detach() - means[labels]) ** 2).sum()) / (sigma2)) / (2 * outputs.shape[0])
 
                         elif self.strategy == 2:
+                            sigma2 = (self.sigma + self.delta) ** 2
+                            means = self.classifier.weight * sigma2
+
                             loss_MD = (torch.div((outputs - means[labels]) ** 2, sigma2.detach())).sum() / (2 * outputs.shape[0])
                             loss_NLL = (torch.log(sigma2).sum()) / 2 + (torch.div((outputs.detach() - means[labels]) ** 2, sigma2).sum() / outputs.shape[0]) / 2
 
