@@ -35,6 +35,9 @@ class NDCC(nn.Module):
             self.sigma = torch.tensor(((np.ones(1) )).astype('float32'), requires_grad=True, device="cuda")
             self.delta = torch.tensor((np.zeros(self.dim_embedding)).astype('float32'), requires_grad=True, device="cuda")
 
+        else:
+            raise ValueError
+
     def forward(self, x):
         x = self.embedding(x)
         # x = nn.parallel.data_parallel(self.embedding, x)
@@ -133,7 +136,8 @@ class NDCC(nn.Module):
             sigma2 = ((self.delta + self.sigma).detach().cpu().numpy()) ** 2    
             Sigma = np.diag(sigma2) 
             inv_Sigma = np.diag(sigma2 ** -1)
-            
+        else:
+            raise ValueError
                 
         means = weight @ Sigma
     
@@ -141,7 +145,7 @@ class NDCC(nn.Module):
 
         idx = 0
         # Iterate over data.
-        for step, (inputs, _) in enumerate(tqdm(loader)):
+        for _, (inputs, _) in enumerate(tqdm(loader)):
             # if step%100 == 0:
             #     print(step)
 
