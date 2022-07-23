@@ -31,13 +31,17 @@ datasets/
 ├── StandfordDogs/
 │   └── Images/
 │       ├── n02085620-Chihuahua/
+│       ├── n02085782-Japanese_spaniel
 │       └── ...
 ├── CUB_200_2010/
 │   └── Images/
 │       ├── 001.Black_footed_Albatross/
+│       ├── 001.Black_footed_Albatross/
 │       └── ...
 └── FounderType200/
     ├── 1/
+    ├── 2/
     └── ...
+
 ```
 If you use these datasets, please cite the corresponding papers.
