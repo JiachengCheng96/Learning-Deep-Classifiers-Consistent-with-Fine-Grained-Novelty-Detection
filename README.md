@@ -36,7 +36,7 @@ datasets/
 ├── CUB_200_2010/
 │   └── Images/
 │       ├── 001.Black_footed_Albatross/
-│       ├── 001.Black_footed_Albatross/
+│       ├── 002.Laysan_Albatross/
 │       └── ...
 └── FounderType200/
     ├── 1/
