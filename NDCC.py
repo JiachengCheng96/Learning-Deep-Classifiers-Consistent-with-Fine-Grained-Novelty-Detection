@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, time
+import os, time, sys
 import numpy as np
 
 import torch
@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 from utils import mahalanobis_metric
 from tqdm import tqdm
+# from tqdm.notebook import tqdm
 
 class NDCC(nn.Module):
     def __init__(self, embedding, classifier, opt, l2_normalize=True):
@@ -67,7 +68,7 @@ class NDCC(nn.Module):
                 epoch_loss = 0.
                 epoch_acc = 0.
 
-                for step, (inputs, labels) in enumerate(dataloaders[phase]):
+                for step, (inputs, labels) in enumerate(tqdm(dataloaders[phase])):
 
                     inputs = (inputs.cuda())
                     labels = (labels.long().cuda())
@@ -91,7 +92,9 @@ class NDCC(nn.Module):
 
                             loss_MD = (torch.div((outputs - means[labels]) ** 2, sigma2.detach())).sum() / (2 * outputs.shape[0])
                             loss_NLL = (torch.log(sigma2).sum()) / 2 + (torch.div((outputs.detach() - means[labels]) ** 2, sigma2).sum() / outputs.shape[0]) / 2
-
+                        else:
+                            raise ValueError
+                            
                         logits = nn.parallel.data_parallel(self.classifier, outputs)
                         loss_CE = F.cross_entropy(logits, labels)
 
@@ -102,9 +105,9 @@ class NDCC(nn.Module):
                         loss.backward()
                         optimizer.step()
 
-                    if step % 100 == 0:
-                        print('{} step: {} loss: {:.4f}, loss_CE: {:.4f}, loss_MD: {:.4f}, loss_NLL: {:.4f}'.format(
-                            phase, step, loss.item(), loss_CE.item(), loss_MD.item(), loss_NLL.item()))
+                    # if step % 100 == 0:
+                    #     print('{} step: {} loss: {:.4f}, loss_CE: {:.4f}, loss_MD: {:.4f}, loss_NLL: {:.4f}'.format(
+                    #         phase, step, loss.item(), loss_CE.item(), loss_MD.item(), loss_NLL.item()))
 
                     # statistics
                     _, preds = torch.max(logits, 1)
